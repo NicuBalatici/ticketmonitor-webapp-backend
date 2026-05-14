@@ -1,7 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text
+from sqlalchemy.testing import db
+
 from database import get_db
+import models
 
 router = APIRouter()
 
@@ -21,9 +24,6 @@ def test_database(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Eroare la conexiunea DB: {str(e)}")
 
 @router.get("/api/tickets")
-def get_fake_tickets():
-    return [
-        {"id": 1, "title": "Nu merge imprimanta", "status": "Deschis", "priority": "High"},
-        {"id": 2, "title": "Resetare parolă Active Directory", "status": "Închis", "priority": "Low"},
-        {"id": 3, "title": "Eroare la conectare VPN", "status": "În progres", "priority": "Medium"}
-    ]
+def get_fake_tickets(db: Session = Depends(get_db)):
+    tickets = db.query(models.IncidentTicket).all()
+    return tickets
