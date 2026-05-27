@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from database import get_db
 
 import ai_service
+
 router = APIRouter()
 
 
@@ -37,21 +38,13 @@ def chat(request: ChatRequest, db: Session = Depends(get_db)):
 
         # 4. Salvarea în baza de date (Logica originală din stânga)
         # Salvează mesajul utilizatorului
-        db.execute(text("""
-            INSERT INTO Messages (MessageID, ConversationID, SenderRole, Message)
-            VALUES (:id, :conv_id, 'User', :message)
-        """), {
-            "id": get_next_id(db, "Messages", "MessageID"),
+        db.execute(text("EXEC insertUserMessage :conv_id, :message"), {
             "conv_id": request.conversation_id,
             "message": user_message
         })
 
         # Salvează răspunsul AI-ului
-        db.execute(text("""
-            INSERT INTO Messages (MessageID, ConversationID, SenderRole, Message)
-            VALUES (:id, :conv_id, 'Assistant', :message)
-        """), {
-            "id": get_next_id(db, "Messages", "MessageID"),
+        db.execute(text("EXEC insertAssistantMessage :conv_id, :message"), {
             "conv_id": request.conversation_id,
             "message": ai_response
         })
@@ -68,10 +61,5 @@ def chat(request: ChatRequest, db: Session = Depends(get_db)):
 
     except Exception as e:
         db.rollback()
+        print(str(e))
         raise HTTPException(status_code=500, detail=f"Eroare: {str(e)}")
-
-
-# Funcția ajutătoare pentru generarea ID-urilor
-def get_next_id(db: Session, table: str, id_column: str) -> int:
-    result = db.execute(text(f"SELECT ISNULL(MAX({id_column}), 0) + 1 FROM {table}")).fetchone()
-    return result[0]
