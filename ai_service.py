@@ -44,7 +44,11 @@ Rules:
 - Average resolution time: DATEDIFF(minute, Submit_Datetime, Resolved_Datetime)
 - For team names, JOIN with Teams table: JOIN Teams t ON t.TeamID = INCIDENT_TICKETS.Team
 - For person names, JOIN with Users table: JOIN Users u ON u.UserID = INCIDENT_TICKETS.Assigned_Person
-- Return ONLY the SQL query, no markdown, no explanations."""
+- Return ONLY the SQL query, no markdown, no explanations.
+- When listing tickets, return only: Ticket_Number, Status, Priority, Company
+- Never select all columns (no SELECT *)
+- Never return more than 10 rows without explicit user request"""
+
 
 def get_sql_from_question(question: str) -> str:
     client = AzureOpenAI(
@@ -59,10 +63,11 @@ def get_sql_from_question(question: str) -> str:
             {"role": "system", "content": DB_SCHEMA},
             {"role": "user", "content": question},
         ],
-        
     )
 
-    return response.choices[0].message.content.strip()
+    raw_query = response.choices[0].message.content.strip()
+    clean_query = raw_query.replace("```sql", "").replace("```", "").strip()
+    return clean_query
 
 
 def get_natural_response(question: str, sql_result: str) -> str:
@@ -75,10 +80,17 @@ def get_natural_response(question: str, sql_result: str) -> str:
     response = client.chat.completions.create(
         model=os.environ["MODEL"],
         messages=[
-            {"role": "system", "content": "You are a helpful assistant that explains SQL query results in natural language. Answer in Romanian.Give only a short, direct answer. Do not mention SQL, query results, or technical details.Do not use quotation marks around names or values."},
+            {
+                "role": "system",
+                "content": """You are a helpful assistant that explains SQL query results in natural language.
+Answer in Romanian. Give only a short, direct answer.
+Do not mention SQL, query results, or technical details.
+Do not use quotation marks around names or values.
+If the SQL Result is empty or [], say: "Nu există date pentru această interogare."
+If the SQL Result contains an error, say: "Nu am putut procesa această cerere." """,
+            },
             {"role": "user", "content": f"Question: {question}\nSQL Result: {sql_result}"},
         ],
-
     )
 
     return response.choices[0].message.content.strip()
