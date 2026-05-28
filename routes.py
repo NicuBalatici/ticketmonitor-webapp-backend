@@ -29,20 +29,15 @@ def chat(request: ChatRequest, db: Session = Depends(get_db)):
 
         ai_response = ai_service.get_natural_response(user_message, sql_result)
 
-        db.execute(text("""
-            INSERT INTO Messages (MessageID, ConversationID, SenderRole, Message)
-            VALUES (:id, :conv_id, 'User', :message)
-        """), {
-            "id": get_next_id(db, "Messages", "MessageID"),
+        # 4. Salvarea în baza de date (Logica originală din stânga)
+        # Salvează mesajul utilizatorului
+        db.execute(text("EXEC insertUserMessage :conv_id, :message"), {
             "conv_id": request.conversation_id,
             "message": user_message
         })
 
-        db.execute(text("""
-            INSERT INTO Messages (MessageID, ConversationID, SenderRole, Message)
-            VALUES (:id, :conv_id, 'Assistant', :message)
-        """), {
-            "id": get_next_id(db, "Messages", "MessageID"),
+        # Salvează răspunsul AI-ului
+        db.execute(text("EXEC insertAssistantMessage :conv_id, :message"), {
             "conv_id": request.conversation_id,
             "message": ai_response
         })
@@ -58,8 +53,5 @@ def chat(request: ChatRequest, db: Session = Depends(get_db)):
 
     except Exception as e:
         db.rollback()
+        print(str(e))
         raise HTTPException(status_code=500, detail=f"Eroare: {str(e)}")
-
-def get_next_id(db: Session, table: str, id_column: str) -> int:
-    result = db.execute(text(f"SELECT ISNULL(MAX({id_column}), 0) + 1 FROM {table}")).fetchone()
-    return result[0]

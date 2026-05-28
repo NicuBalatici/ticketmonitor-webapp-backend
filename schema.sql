@@ -8,17 +8,17 @@ DROP TABLE Teams;
 CREATE TABLE Teams
 (
     TeamID   INT PRIMARY KEY IDENTITY (1,1),
-    TeamName VARCHAR(50) NOT NULL UNIQUE
+    TeamName VARCHAR(50) NOT NULL
 );
 
 -- 2. Crearea tabelului pentru Utilizatori/Angajați
 CREATE TABLE Users
 (
-    UserID   INT PRIMARY KEY,
-    FullName VARCHAR(100) NOT NULL UNIQUE,
+    UserID   INT PRIMARY KEY IDENTITY (1,1),
+    FullName VARCHAR(100) NOT NULL,
     Email    VARCHAR(100),
-    Team     VARCHAR(50)  NOT NULL, -- Legatura catre tabela Teams
-    FOREIGN KEY (Team) REFERENCES Teams (TeamName)
+    Team     INT  NOT NULL, -- Legatura catre tabela Teams
+    FOREIGN KEY (Team) REFERENCES Teams (TeamID)
 );
 
 -- 3. Crearea tabelului principal de Tickete
@@ -34,8 +34,8 @@ CREATE TABLE INCIDENT_TICKETS
 
     Company              VARCHAR(100),
     Project              VARCHAR(100),
-    Team                 VARCHAR(50),  -- Legatura catre tabela Teams
-    Assigned_Person      VARCHAR(100), -- Legatura catre tabela Users
+    Team                 INT, -- Legatura catre tabela Teams
+    Assigned_Person      INT, -- Legatura catre tabela Users
     Service              VARCHAR(100),
     Description          TEXT,
     Notes                TEXT,
@@ -55,15 +55,15 @@ CREATE TABLE INCIDENT_TICKETS
     Pending_Duration     INT,
 
     -- Chei externe
-    FOREIGN KEY (Assigned_Person) REFERENCES Users (FullName),
-    FOREIGN KEY (Team) REFERENCES Teams (TeamName)
+    FOREIGN KEY (Assigned_Person) REFERENCES Users (UserID),
+    FOREIGN KEY (Team) REFERENCES Teams (TeamID)
 );
 
 CREATE TABLE Conversations
 (
     ConversationID INT PRIMARY KEY IDENTITY (1,1),
     UserID         INT         NOT NULL,
-    Ticket         VARCHAR(20) NOT NULL, --De ce ii Ticket_Number varchar si nu int?
+    Ticket         VARCHAR(20) NOT NULL,
 
     FOREIGN KEY (UserID) REFERENCES Users (UserID),
     FOREIGN KEY (Ticket) REFERENCES INCIDENT_TICKETS (Ticket_Number)
@@ -83,22 +83,29 @@ CREATE TABLE Messages
 
 INSERT INTO Teams(TeamName)
 VALUES ('One');
+INSERT INTO Teams(TeamName)
+VALUES ('Two');
+INSERT INTO Teams(TeamName)
+VALUES ('Three');
 
-INSERT INTO Users(UserID, FullName, Email, Team)
-VALUES (0, 'John Doe', 'JohnDoe@example.com', 'One')
-INSERT
-INTO Users(UserID, FullName, Email, Team)
-VALUES (1, 'Stan Castan', 'StanCastan@example.com', 'One')
+INSERT INTO Users(FullName, Email, Team)
+VALUES ('Stan Castan', 'StanCastan@example.com', 1)
+INSERT INTO Users(FullName, Email, Team)
+VALUES ('Hector Vector', 'HectorVector@example.com', 1)
 
-INSERT INTO INCIDENT_TICKETS (Ticket_Number, Status, Priority, Company, Project, Team, Assigned_Person, Service,
-                              Description, Notes, Resolution, Cat_T1, Cat_T2, Cat_T3, Resolution_Category,
-                              Pending_Duration)
-VALUES ('1', 'Open', 'Medium', 'Profi', 'Project', 'One', 'Stan Castan', 'Service', 'Description', 'Notes',
-        'Resolution', 'Cat_T1', 'Cat_T2', 'Cat_T3', 'idk', 1)
+INSERT INTO Users(FullName, Email, Team)
+VALUES ('Spiderman', 'Spiderman@example.com', 2)
+INSERT INTO Users(FullName, Email, Team)
+VALUES ('Spongebob', 'Spongebob@example.com', 2)
 
-INSERT INTO Conversations (UserID, Ticket)
-VALUES (1, '1')
+INSERT INTO Users(FullName, Email, Team)
+VALUES ('Nicola Tesla', 'NicolaTesla@example.com', 3)
+INSERT INTO Users(FullName, Email, Team)
+VALUES ('Erwin Schrodinger', 'ErwinSchrodinger@example.com', 3)
 
-INSERT INTO Messages (ConversationID, SenderRole, Message)
-VALUES (0, 'System', 'You are a helpfull assistan')
+-- INSERT INTO Conversations (UserID, Ticket)
+-- VALUES (1, '1')
+
+-- INSERT INTO Messages (ConversationID, SenderRole, Message)
+-- VALUES (1, 'System', 'You are a helpfull assistan')
 
