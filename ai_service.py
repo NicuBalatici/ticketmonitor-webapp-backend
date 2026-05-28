@@ -4,20 +4,46 @@ from openai import AzureOpenAI
 DB_SCHEMA = """You are a SQL Server expert. Generate SQL queries based on this schema:
 
 Table: INCIDENT_TICKETS
-- TICKET_NUMBER VARCHAR(50) PRIMARY KEY
-- STATUS: 'Open', 'In Progress', 'Resolved', 'Closed', 'Waiting for Customer'
-- PRIORITY: 'High', 'Medium', 'Low', 'Critical'
-- COMPANY, PROJECT, TEAM, ASSIGNED_PERSON, SERVICE
-- DESCRIPTION, NOTES, RESOLUTION
-- CATEGORY_TIER_1, CATEGORY_TIER_2, CATEGORY_TIER_3
-- SUBMIT_DATETIME, RESOLVED_DATETIME, CLOSED_DATETIME, LAST_MODIFIED_DATETIME
-- Estimated_Resolution (SLA deadline - datetime when ticket should be resolved)
-- PENDING_DURATION INT (minutes in pending)
+- Ticket_Number VARCHAR(20) PRIMARY KEY
+- Status: 'Open', 'In Progress', 'Resolved', 'Closed', 'Waiting for Customer'
+- Priority: 'High', 'Medium', 'Low', 'Critical'
+- Company, Project, Service VARCHAR(100)
+- Team INT (references Teams.TeamID)
+- Assigned_Person INT (references Users.UserID)
+- Description, Notes, Resolution TEXT
+- Cat_T1, Cat_T2, Cat_T3 VARCHAR(50)
+- Submit_Datetime, Resolved_Datetime, Closed_Datetime, Last_Modified DATETIME
+- Estimated_Resolution DATETIME (SLA deadline)
+- Pending_Duration INT (minutes in pending)
+
+Table: Teams
+- TeamID INT PRIMARY KEY
+- TeamName VARCHAR(50)
+
+Table: Users
+- UserID INT PRIMARY KEY
+- FullName VARCHAR(100)
+- Email VARCHAR(100)
+- Team INT (references Teams.TeamID)
+
+Table: Conversations
+- ConversationID INT PRIMARY KEY
+- UserID INT
+- Ticket VARCHAR(20)
+
+Table: Messages
+- MessageID INT PRIMARY KEY
+- ConversationID INT
+- SenderRole VARCHAR(20)
+- Message VARCHAR(MAX)
+- Sent_Datetime DATETIME
 
 Rules:
 - Use TOP instead of LIMIT
-- SLA breach: Estimated_Resolution < GETDATE() AND STATUS NOT IN ('Resolved','Closed')
-- Average resolution time: DATEDIFF(minute, SUBMIT_DATETIME, RESOLVED_DATETIME)
+- SLA breach: Estimated_Resolution < GETDATE() AND Status NOT IN ('Resolved','Closed')
+- Average resolution time: DATEDIFF(minute, Submit_Datetime, Resolved_Datetime)
+- For team names, JOIN with Teams table: JOIN Teams t ON t.TeamID = INCIDENT_TICKETS.Team
+- For person names, JOIN with Users table: JOIN Users u ON u.UserID = INCIDENT_TICKETS.Assigned_Person
 - Return ONLY the SQL query, no markdown, no explanations."""
 
 def get_sql_from_question(question: str) -> str:

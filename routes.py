@@ -42,22 +42,15 @@ def chat(request: ChatRequest, db: Session = Depends(get_db)):
 
         # 5. Salvarea în baza de date (Logica originală din stânga)
         # Salvează mesajul utilizatorului
-        db.execute(text("""
-            INSERT INTO Messages (ConversationID, SenderRole, Message)
-            VALUES (:conv_id, 'User', :message)
-        """), {
+        db.execute(text("EXEC insertUserMessage :conv_id, :message"), {
             "conv_id": request.conversation_id,
             "message": user_message
         })
-
-        # Salvează răspunsul AI-ului
-        db.execute(text("""
-            INSERT INTO Messages (ConversationID, SenderRole, Message)
-            VALUES (:conv_id, 'Assistant', :message)
-        """), {
+        db.execute(text("EXEC insertAssistantMessage :conv_id, :message"), {
             "conv_id": request.conversation_id,
             "message": ai_response
         })
+
 
         db.commit()
 
