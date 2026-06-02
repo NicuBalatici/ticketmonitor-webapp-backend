@@ -81,12 +81,12 @@ def chat(request: ChatRequest, db: Session = Depends(get_db)):
 def get_history(conversation_id: int, db: Session = Depends(get_db)):
     try:
         result = db.execute(text("""
-            SELECT SenderRole, Message FROM Messages 
+            SELECT SenderRole, Message, Sent_Datetime FROM Messages 
             WHERE ConversationID = :conv_id
             ORDER BY Sent_Datetime ASC
         """), {"conv_id": conversation_id}).fetchall()
 
-        return [{"role": row[0].lower(), "text": row[1]} for row in result]
+        return [{"role": row[0].lower(), "text": row[1], "timestamp": row[2].isoformat() if row[2] else None} for row in result]
     except Exception as e:
         db.rollback()
         print(str(e))
