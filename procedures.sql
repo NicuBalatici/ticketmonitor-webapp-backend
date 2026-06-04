@@ -1,4 +1,6 @@
 DROP PROCEDURE dbo.createConversation
+DROP PROCEDURE dbo.getConversation
+DROP PROCEDURE dbo.getMessageHistory
 DROP PROCEDURE dbo.insertUserMessage
 DROP PROCEDURE dbo.insertAssistantMessage
 GO
@@ -14,6 +16,25 @@ AS
     SELECT ConversationID FROM Conversations WHERE UserID = @UserID AND Ticket = @TicketID;
 GO
 
+
+CREATE PROCEDURE dbo.getConversation
+    @ConversationID INT = 0
+AS
+    SET NOCOUNT ON;
+    SELECT ConversationID FROM Conversations WHERE ConversationID = @ConversationID;
+GO
+
+
+CREATE PROCEDURE dbo.getMessageHistory
+    @ConversationID INT = 0
+AS
+    SET NOCOUNT ON;
+    SELECT SenderRole, Message, Sent_Datetime FROM Messages
+    WHERE ConversationID = @ConversationID
+    ORDER BY Sent_Datetime
+GO
+
+
 CREATE PROCEDURE dbo.insertUserMessage
     @ConversationID INT = 0,
     @Message nvarchar(MAX) = NULL
@@ -22,6 +43,7 @@ AS
     INSERT INTO Messages(ConversationID, SenderRole, Message, Sent_Datetime)
     VALUES (@ConversationID, 'User', @Message, GETDATE());
 GO
+
 
 CREATE PROCEDURE dbo.insertAssistantMessage
     @ConversationID INT = 0,
