@@ -20,23 +20,39 @@ def home():
 @router.post("/chat")
 def chat(request: ChatRequest, db: Session = Depends(get_db)):
     try:
+
+        # Creează conversația dacă nu există
+        existing = db.execute(text(
+            "SELECT ConversationID FROM Conversations WHERE ConversationID = :conv_id"
+        ), {"conv_id": request.conversation_id}).fetchone()
+
+        if not existing:
+            db.execute(text("SET IDENTITY_INSERT Conversations ON"))
+            db.execute(text(
+                "INSERT INTO Conversations (UserID) VALUES (:user_id)"
+            ), {
+                "user_id": request.user_id
+            })
+            db.execute(text("SET IDENTITY_INSERT Conversations OFF"))
+            db.commit()
+
         user_message = request.message
 
         sql_query = ai_service.get_sql_from_question(user_message)
+
+        sql_upper = sql_query.strip().upper()
+        if not (sql_upper.startswith("SELECT") or sql_upper.startswith("EXEC")):
+            raise HTTPException(status_code=400, detail="Doar query-uri SELECT sunt permise!")
 
         result = db.execute(text(sql_query)).fetchall()
         sql_result = str(result)
 
         ai_response = ai_service.get_natural_response(user_message, sql_result)
 
-        # 4. Salvarea în baza de date (Logica originală din stânga)
-        # Salvează mesajul utilizatorului
         db.execute(text("EXEC insertUserMessage :conv_id, :message"), {
             "conv_id": request.conversation_id,
             "message": user_message
         })
-
-        # Salvează răspunsul AI-ului
         db.execute(text("EXEC insertAssistantMessage :conv_id, :message"), {
             "conv_id": request.conversation_id,
             "message": ai_response
@@ -50,7 +66,24 @@ def chat(request: ChatRequest, db: Session = Depends(get_db)):
             "sql_result": sql_result,
             "natural_response": ai_response
         }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        print(str(e))
+        raise HTTPException(status_code=500, detail=f"Eroare: {str(e)}")
 
+
+@router.get("/history/{conversation_id}")
+def get_history(conversation_id: int, db: Session = Depends(get_db)):
+    try:
+        result = db.execute(text("""
+            SELECT SenderRole, Message, Sent_Datetime FROM Messages 
+            WHERE ConversationID = :conv_id
+            ORDER BY Sent_Datetime ASC
+        """), {"conv_id": conversation_id}).fetchall()
+
+        return [{"role": row[0].lower(), "text": row[1], "timestamp": row[2].isoformat() if row[2] else None} for row in result]
     except Exception as e:
         db.rollback()
         print(str(e))
