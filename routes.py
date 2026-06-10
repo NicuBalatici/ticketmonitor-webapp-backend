@@ -12,6 +12,7 @@ class ChatRequest(BaseModel):
     message: str
     conversation_id: int
     user_id: int
+    ticket_id: str
 
 @router.get("/")
 def home():
