@@ -5,39 +5,33 @@ from pydantic import BaseModel
 from database import get_db
 
 import ai_service
-router = APIRouter()
 
+router = APIRouter()
 
 class ChatRequest(BaseModel):
     message: str
     conversation_id: int
     user_id: int
-
+    ticket_id: str
 
 @router.get("/")
 def home():
     return {"status": "Serverul FastAPI este online!"}
-
 
 @router.post("/chat")
 def chat(request: ChatRequest, db: Session = Depends(get_db)):
     try:
 
         # Creează conversația dacă nu există
-        # Creează conversația dacă nu există
-        existing = db.execute(text(
-            "SELECT ConversationID FROM Conversations WHERE ConversationID = :conv_id"
-        ), {"conv_id": request.conversation_id}).fetchone()
+        existing = db.execute(text("EXEC getConversation :conv_id"), {
+            "conv_id": request.conversation_id
+        }).fetchone()
 
         if not existing:
-            db.execute(text("SET IDENTITY_INSERT Conversations ON"))
-            db.execute(text(
-                "INSERT INTO Conversations (ConversationID, UserID) VALUES (:conv_id, :user_id)"
-            ), {
-                "conv_id": request.conversation_id,
-                "user_id": request.user_id
+            db.execute(text("EXEC createConversation :user_id, :ticket_id"), {
+                "user_id": request.user_id,
+                "ticket_id": request.ticket_id
             })
-            db.execute(text("SET IDENTITY_INSERT Conversations OFF"))
             db.commit()
 
         user_message = request.message
@@ -74,17 +68,16 @@ def chat(request: ChatRequest, db: Session = Depends(get_db)):
         raise
     except Exception as e:
         db.rollback()
+        print(str(e))
         raise HTTPException(status_code=500, detail=f"Eroare: {str(e)}")
 
 
 @router.get("/history/{conversation_id}")
 def get_history(conversation_id: int, db: Session = Depends(get_db)):
     try:
-        result = db.execute(text("""
-            SELECT SenderRole, Message, Sent_Datetime FROM Messages 
-            WHERE ConversationID = :conv_id
-            ORDER BY Sent_Datetime ASC
-        """), {"conv_id": conversation_id}).fetchall()
+        result = db.execute(text("EXEC getMessageHistory :conv_id"), {
+            "conv_id": conversation_id
+        }).fetchall()
 
         return [{"role": row[0].lower(), "text": row[1], "timestamp": row[2].isoformat() if row[2] else None} for row in result]
     except Exception as e:
